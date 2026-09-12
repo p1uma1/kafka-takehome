@@ -8,6 +8,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
+import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
+
 public class Consumer {
 
     public static void main(String[] args) {
@@ -22,47 +24,37 @@ public class Consumer {
                 "org.apache.kafka.common.serialization.StringDeserializer");
 
         props.put("value.deserializer",
-                "org.apache.kafka.common.serialization.StringDeserializer");
+                "io.confluent.kafka.serializers.KafkaAvroDeserializer");
 
         props.put("auto.offset.reset", "earliest");
 
-        KafkaConsumer<String, String> consumer =
-                new KafkaConsumer<>(props);
+        props.put(
+                "schema.registry.url",
+                "http://localhost:8081"
+        );
+        props.put(
+                KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG,
+                true
+        );
+
+        KafkaConsumer<String, Order> consumer
+                = new KafkaConsumer<>(props);
 
         consumer.subscribe(
-                Collections.singletonList("payment-requests")
+                Collections.singletonList("orders")
         );
 
         while (true) {
 
-            ConsumerRecords<String, String> records =
-                    consumer.poll(Duration.ofMillis(1000));
+            ConsumerRecords<String, Order> records
+                    = consumer.poll(Duration.ofMillis(1000));
 
-            for (ConsumerRecord<String, String> record : records) {
+            for (ConsumerRecord<String, Order> record : records) {
 
                 System.out.println(
-                        "Received payment: " + record.value()
+                        "Received order: " + record.value().getProduct()
                 );
-
-                processPayment(record.value());
             }
         }
-    }
-
-    private static void processPayment(String payment) {
-
-        String[] parts = payment.split(",");
-
-        String paymentId = parts[0];
-        String orderId = parts[1];
-        double amount = Double.parseDouble(parts[2]);
-
-        System.out.println("Payment ID: " + paymentId);
-        System.out.println("Order ID: " + orderId);
-        System.out.println("Charging: Rs. " + amount);
-
-        // Imagine calling Stripe / bank / payment gateway here
-
-        System.out.println("Payment successful!");
     }
 }
