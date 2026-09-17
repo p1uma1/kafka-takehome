@@ -35,6 +35,11 @@ public class Consumer {
                 "localhost:9092"
         );
 
+        props.put(
+                StreamsConfig.COMMIT_INTERVAL_MS_CONFIG,
+                1000
+        );
+
         // Schema Registry configuration
         Map<String, String> serdeConfig = Map.of(
                 "schema.registry.url",
@@ -71,11 +76,10 @@ public class Consumer {
                         .branch(
                                 (key, order) -> {
 
-                                    System.out.println(
-                                            "Order received: "
-                                            + order.getOrderId()
-                                    );
-
+                                    //     System.out.println(
+                                    //             "Order received: "
+                                    //             + order.getOrderId()
+                                    //     );
                                     return saveOrderWithRetry(order);
                                 },
                                 Branched.as("saved")
@@ -90,20 +94,20 @@ public class Consumer {
                 = branches.get("order-failed");
 
         failedOrders
-        .peek((key, order) ->
-                System.err.println(
+                .peek((key, order)
+                        -> System.err.println(
                         "Sending order "
                         + order.getOrderId()
                         + " to DLQ"
                 )
-        )
-        .to(
-                "orders-dlq",
-                Produced.with(
-                        Serdes.String(),
-                        orderSerde
                 )
-        );
+                .to(
+                        "orders-dlq",
+                        Produced.with(
+                                Serdes.String(),
+                                orderSerde
+                        )
+                );
 
         // Aggregate running sum + count
         KTable<String, PriceAggregate> aggregate
@@ -122,7 +126,7 @@ public class Consumer {
                                         .build(),
                                 (key, order, current) -> {
 
-                                    System.out.println("New Order : " + order.getProduct());
+                                    //     System.out.println("New Order : " + order.getProduct());
                                     double price
                                     = ((Number) order.getPrice())
                                             .doubleValue();
@@ -162,8 +166,7 @@ public class Consumer {
                 .peek(
                         (key, average)
                         -> System.out.println(
-                                "Running average: "
-                                + average
+                                "\n>>> Running Average: Rs. " + average + " <<<"
                         )
                 );
 
@@ -196,7 +199,6 @@ public class Consumer {
                 //         "Saved to database: "
                 //         + order.getOrderId()
                 // );
-
                 return true;
 
             } catch (Exception e) {
