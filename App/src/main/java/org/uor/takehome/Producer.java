@@ -5,10 +5,6 @@ import java.util.Scanner;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.KafkaException;
-import org.apache.kafka.common.errors.AuthorizationException;
-import org.apache.kafka.common.errors.OutOfOrderSequenceException;
-import org.apache.kafka.common.errors.ProducerFencedException;
 
 public class Producer {
 
@@ -29,6 +25,7 @@ public class Producer {
                 "schema.registry.url",
                 "http://localhost:8081"
         );
+        props.put("enable.idempotence", true);
 
         KafkaProducer<String, Order> producer
                 = new KafkaProducer<>(props);
@@ -95,50 +92,34 @@ public class Producer {
                             order.getOrderId().toString(),
                             order
                     );
-        final Order orderToSend = order;
+            final Order orderToSend = order;
 
             try {
-                producer.send(record, (metadata, exception) -> {
 
-                    if (exception != null) {
+                var metadata = producer.send(record).get();
 
-                        System.err.println(
-                                "\nOrder failed: " + exception.getMessage()
-                        );
+                System.out.println(
+                        "Order REALLY sent: "
+                        + order.getOrderId()
+                        + " | " + order.getProduct()
+                        + " | Rs. " + order.getPrice()
+                );
 
-                    } else {
+                System.out.println(
+                        "Topic: " + metadata.topic()
+                        + " Partition: " + metadata.partition()
+                        + " Offset: " + metadata.offset()
+                );
 
-                        System.out.println(
-                                "Order sent: "
-                                + orderToSend.getOrderId() + " | "
-                                + orderToSend.getProduct() + " | Rs. "
-                                + orderToSend.getPrice()
-                        );
-                    }
-                });
+            } catch (Exception e) {
 
-            } catch (KafkaException e) {
-                // We can't recover from these exceptions, so our only option is to close the producer and exit.
-
+                System.err.println("PRODUCER ERROR:");
+                e.printStackTrace();
             }
-            //     Example usage
-            //     try {
-            //         producer.beginTransaction();
-            //         for (int i = 0; i < 100; i++) {
-            //             producer.s end(new ProducerRecord<>("my-topic", Integer.toString(i), Integer.toString(i)));
-            //         }
-            //         producer.commitTransaction();
-            //     } catch (ProducerFencedException | OutOfOrderSequenceException | AuthorizationException e) {
-            //         // We can't recover from these exceptions, so our only option is to close the producer and exit.
-            //         producer.close();
-            //     } catch (KafkaException e) {
-            //         // For all other exceptions, just abort the transaction and try again.
-            //         producer.abortTransaction();
-            //     }
-            //     producer.close();
 
             orderId++;
         }
 
     }
+
 }

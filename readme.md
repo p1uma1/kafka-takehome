@@ -314,6 +314,9 @@ Invoke-RestMethod http://localhost:8081/subjects
 
 An empty result is normal when no schemas have been registered yet.
 
+## 6. posgres Configuration
+docker run --name kafka-db -e POSTGRES_PASSWORD=mysecretpassword -p 5432:5432 -d postgres
+
 ## 6. Java Configuration
 
 The Java application runs on Windows, so Kafka remains:

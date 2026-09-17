@@ -1,0 +1,17 @@
+{
+  "type": "record",
+  "name": "PriceAggregate",
+  "namespace": "org.uor.takehome",
+  "fields": [
+    {
+      "name": "sum",
+      "type": "double",
+      "default": 0.0
+    },
+    {
+      "name": "count",
+      "type": "long",
+      "default": 0
+    }
+  ]
+}
