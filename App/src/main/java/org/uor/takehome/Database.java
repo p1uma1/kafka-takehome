@@ -8,7 +8,7 @@ import java.sql.SQLException;
 public class Database {
 
     private static final String URL =
-            "jdbc:postgresql://localhost:5432/orderdb";
+            "jdbc:postgresql://localhost:5432/postgres";
 
     private static final String USER = "postgres";
 

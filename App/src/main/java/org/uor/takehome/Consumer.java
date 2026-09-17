@@ -7,11 +7,14 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.kstream.Branched;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.Grouped;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Materialized;
+import org.apache.kafka.streams.kstream.Named;
+import org.apache.kafka.streams.kstream.Produced;
 
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 
@@ -62,12 +65,45 @@ public class Consumer {
                                 orderSerde
                         )
                 );
-        KStream<String, Order> savedOrders
-                = orders.filter((key, order) -> {
-                System.out.println("order recieved");
-                    return saveOrderWithRetry(order);
+        Map<String, KStream<String, Order>> branches
+                = orders
+                        .split(Named.as("order-"))
+                        .branch(
+                                (key, order) -> {
 
-                });
+                                    System.out.println(
+                                            "Order received: "
+                                            + order.getOrderId()
+                                    );
+
+                                    return saveOrderWithRetry(order);
+                                },
+                                Branched.as("saved")
+                        )
+                        .defaultBranch(
+                                Branched.as("failed")
+                        );
+        KStream<String, Order> savedOrders
+                = branches.get("order-saved");
+
+        KStream<String, Order> failedOrders
+                = branches.get("order-failed");
+
+        failedOrders
+        .peek((key, order) ->
+                System.err.println(
+                        "Sending order "
+                        + order.getOrderId()
+                        + " to DLQ"
+                )
+        )
+        .to(
+                "orders-dlq",
+                Produced.with(
+                        Serdes.String(),
+                        orderSerde
+                )
+        );
 
         // Aggregate running sum + count
         KTable<String, PriceAggregate> aggregate
@@ -156,10 +192,10 @@ public class Consumer {
 
                 Database.saveOrder(order);
 
-                System.out.println(
-                        "Saved to database: "
-                        + order.getOrderId()
-                );
+                // System.out.println(
+                //         "Saved to database: "
+                //         + order.getOrderId()
+                // );
 
                 return true;
 
